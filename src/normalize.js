@@ -192,8 +192,13 @@ function normalizeTimelineEvent(raw, match) {
   };
 
   if (type === 'substitution') {
-    event.playerIn = raw.IdPlayer ? { id: String(raw.IdPlayer), name: null } : null;
-    event.playerOut = raw.IdSubPlayer ? { id: String(raw.IdSubPlayer), name: null } : null;
+    const subNames = extractSubstitutionNames(raw);
+    event.playerIn = raw.IdPlayer
+      ? { id: String(raw.IdPlayer), name: subNames.playerIn }
+      : null;
+    event.playerOut = raw.IdSubPlayer
+      ? { id: String(raw.IdSubPlayer), name: subNames.playerOut }
+      : null;
     event.player = null;
   }
 
@@ -202,9 +207,30 @@ function normalizeTimelineEvent(raw, match) {
 
 function extractPlayerName(raw) {
   const desc = localeText(raw.EventDescription, '');
-  const match = desc.match(/^([^(]+)\s*\(/);
-  if (match) return match[1].trim();
+  const paren = desc.match(/^([^(]+)\s*\(/);
+  if (paren) return paren[1].trim();
+  const booked = desc.match(/^(.+?)\s*\([^)]+\)\s+is booked/i);
+  if (booked) return booked[1].trim();
+  const ownGoal = desc.match(/^(.+?)\s*\([^)]+\)\s+scores an own goal/i);
+  if (ownGoal) return ownGoal[1].trim();
   return null;
+}
+
+function extractSubstitutionNames(raw) {
+  const desc = localeText(raw.EventDescription, '');
+  const bench = desc.match(
+    /^(?:Before the second half begins\s+)?(.+?)\s*\(in\)\s*comes off the bench to replace\s+(.+?)\s*\(out\)/i
+  );
+  if (bench) {
+    return { playerIn: bench[1].trim(), playerOut: bench[2].trim() };
+  }
+  const tagged = desc.match(
+    /^(?:Before the second half begins\s+)?(.+?)\s*\(in\)\s*replace(?:s)?\s+(.+?)\s*\(out\)/i
+  );
+  if (tagged) {
+    return { playerIn: tagged[1].trim(), playerOut: tagged[2].trim() };
+  }
+  return { playerIn: null, playerOut: null };
 }
 
 function filterPublicEvents(events) {
