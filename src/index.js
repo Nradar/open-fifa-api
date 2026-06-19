@@ -13,9 +13,21 @@ const store = createStore({
 const fifaClient = createFifaClient();
 const poller = createPoller({ fifaClient, store });
 
+const inflightTimelines = new Map();
+async function ensureTimeline(matchId, { force = false } = {}) {
+  if (!force && store.getMatchEvents(matchId).length) return;
+  if (inflightTimelines.has(matchId)) {
+    await inflightTimelines.get(matchId);
+    return;
+  }
+  const task = poller.ingestTimeline(matchId).finally(() => inflightTimelines.delete(matchId));
+  inflightTimelines.set(matchId, task);
+  await task;
+}
+
 const app = express();
 app.use(express.json());
-app.use(createRoutes(store));
+app.use(createRoutes(store, { ensureTimeline }));
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });

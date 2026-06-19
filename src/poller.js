@@ -134,7 +134,7 @@ function createPoller({ fifaClient, store, options = {} }) {
     timer = null;
   }
 
-  return { start, stop, syncSchedule, pollTick };
+  return { start, stop, syncSchedule, pollTick, ingestTimeline };
 }
 
 module.exports = { createPoller };

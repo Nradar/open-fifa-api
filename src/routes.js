@@ -1,7 +1,18 @@
 const express = require('express');
 
-function createRoutes(store) {
+function createRoutes(store, { ensureTimeline } = {}) {
   const router = express.Router();
+
+  async function loadMatchEvents(match, req) {
+    const force = req.query.refresh === '1' || req.query.refresh === 'true';
+    if (ensureTimeline && (force || !store.getMatchEvents(match.id).length)) {
+      await ensureTimeline(match.id, { force });
+      if (store.getMatchEvents(match.id).length) {
+        store.saveSnapshot();
+      }
+    }
+    return store.getMatchEvents(match.id);
+  }
 
   router.get('/health', (_req, res) => {
     const meta = store.getMeta();
@@ -32,30 +43,41 @@ function createRoutes(store) {
     });
   });
 
-  router.get('/api/matches/:matchId', (req, res) => {
+  router.get('/api/matches/:matchId', async (req, res) => {
     const match = store.getMatch(req.params.matchId);
     if (!match) {
       res.status(404).json({ error: 'Match not found' });
       return;
     }
-    res.json({
-      match,
-      events: store.getMatchEvents(match.id),
-    });
+    try {
+      const events = await loadMatchEvents(match, req);
+      res.json({ match, events });
+    } catch (err) {
+      res.status(502).json({ error: err.message });
+    }
   });
 
-  router.get('/api/matches/:matchId/events', (req, res) => {
+  router.get('/api/matches/:matchId/events', async (req, res) => {
     const match = store.getMatch(req.params.matchId);
     if (!match) {
       res.status(404).json({ error: 'Match not found' });
       return;
     }
-    res.json({
-      matchId: match.id,
-      matchNumber: match.matchNumber,
-      count: store.getMatchEvents(match.id).length,
-      events: store.getMatchEvents(match.id),
-    });
+    try {
+      const events = await loadMatchEvents(match, req);
+      const summary = summarizeEvents(events);
+      res.json({
+        matchId: match.id,
+        matchNumber: match.matchNumber,
+        home: match.home?.name,
+        away: match.away?.name,
+        count: events.length,
+        summary,
+        events,
+      });
+    } catch (err) {
+      res.status(502).json({ error: err.message });
+    }
   });
 
   router.get('/api/events/recent', (req, res) => {
@@ -83,6 +105,39 @@ function createRoutes(store) {
   });
 
   return router;
+}
+
+function summarizeEvents(events) {
+  const counts = {
+    goal: 0,
+    yellow_card: 0,
+    red_card: 0,
+    second_yellow: 0,
+    substitution: 0,
+    var: 0,
+  };
+  const byTeam = {};
+
+  for (const event of events) {
+    if (counts[event.type] !== undefined) {
+      counts[event.type] += 1;
+    }
+    if (!event.team?.name) continue;
+    if (!byTeam[event.team.name]) {
+      byTeam[event.team.name] = { yellow_card: 0, red_card: 0, second_yellow: 0, goal: 0 };
+    }
+    const bucket = byTeam[event.team.name];
+    if (bucket[event.type] !== undefined) {
+      bucket[event.type] += 1;
+    }
+  }
+
+  return {
+    ...counts,
+    yellow_cards: counts.yellow_card + counts.second_yellow,
+    red_cards: counts.red_card + counts.second_yellow,
+    byTeam,
+  };
 }
 
 module.exports = { createRoutes };
