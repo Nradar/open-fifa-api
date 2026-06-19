@@ -55,9 +55,16 @@ Uses FIFA's undocumented public JSON API (same backend as fifa.com Match Centre)
 
 Same flow as [tvfifa](https://github.com/nradar/tvfifa):
 
-1. Push this repo to GitHub (`nradar/open-fifa-api` or your fork).
-2. GitHub Actions builds and pushes `ghcr.io/<owner>/open-fifa-api:latest` on every push to `main`.
-3. On Unraid: add container from `unraid/open-fifa-api.xml`, or pull manually:
+1. Create an empty repo on GitHub: `Nradar/open-fifa-api` (no README).
+2. Push from this folder:
+
+```bash
+git remote add origin https://github.com/Nradar/open-fifa-api.git
+git push -u origin main
+```
+
+3. GitHub Actions builds and pushes `ghcr.io/nradar/open-fifa-api:latest` on every push to `main`.
+4. On Unraid: add container from `unraid/open-fifa-api.xml`, or pull manually:
 
 ```bash
 docker pull ghcr.io/nradar/open-fifa-api:latest
