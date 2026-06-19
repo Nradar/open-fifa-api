@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>open-fifa-api</Name>
+  <Repository>ghcr.io/nradar/open-fifa-api:latest</Repository>
+  <Registry>https://ghcr.io</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support/>
+  <Project>https://github.com/nradar/open-fifa-api</Project>
+  <Overview>Free real-time FIFA World Cup 2026 match events API (goals, cards, substitutions). Polls FIFA internal JSON API and exposes REST + SSE.</Overview>
+  <Category>Tools:Utilities</Category>
+  <WebUI>http://[IP]:[PORT:8090]/health</WebUI>
+  <TemplateURL/>
+  <Icon>https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/soccer-icon.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled></DateInstalled>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>Replace nradar with your GitHub username. Push code to GitHub to build the image automatically. GHCR package must be public (or configure registry auth on Unraid).</Requires>
+  <Config Name="API Port" Target="8090" Default="8090" Mode="tcp" Description="HTTP API port" Type="Port" Display="always" Required="true" Mask="false">8090</Config>
+  <Config Name="Data Directory" Target="/data" Default="/mnt/user/appdata/open-fifa-api" Mode="rw" Description="Snapshot cache (schedule + events survive restarts)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/open-fifa-api</Config>
+  <Config Name="PORT" Target="PORT" Default="8090" Mode="{3}" Description="Internal HTTP port" Type="Variable" Display="advanced" Required="true" Mask="false">8090</Config>
+  <Config Name="SNAPSHOT_PATH" Target="SNAPSHOT_PATH" Default="/data/snapshot.json" Mode="{3}" Description="Snapshot JSON path inside container" Type="Variable" Display="advanced" Required="false" Mask="false">/data/snapshot.json</Config>
+  <Config Name="POLL_LIVE_MS" Target="POLL_LIVE_MS" Default="15000" Mode="{3}" Description="Poll interval during live matches (ms)" Type="Variable" Display="advanced" Required="false" Mask="false">15000</Config>
+  <Config Name="POLL_IDLE_MS" Target="POLL_IDLE_MS" Default="300000" Mode="{3}" Description="Poll interval when idle (ms)" Type="Variable" Display="advanced" Required="false" Mask="false">300000</Config>
+  <Config Name="WC_COMPETITION_ID" Target="WC_COMPETITION_ID" Default="17" Mode="{3}" Description="FIFA World Cup competition ID" Type="Variable" Display="advanced" Required="false" Mask="false">17</Config>
+  <Config Name="WC_SEASON_ID" Target="WC_SEASON_ID" Default="285023" Mode="{3}" Description="FIFA World Cup 2026 season ID" Type="Variable" Display="advanced" Required="false" Mask="false">285023</Config>
+  <Config Name="WC_STAGE_ID" Target="WC_STAGE_ID" Default="289273" Mode="{3}" Description="FIFA World Cup 2026 stage ID" Type="Variable" Display="advanced" Required="false" Mask="false">289273</Config>
+</Container>

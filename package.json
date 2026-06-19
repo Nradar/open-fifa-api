@@ -1,0 +1,17 @@
+{
+  "name": "open-fifa-api",
+  "version": "1.0.0",
+  "description": "Free real-time FIFA World Cup 2026 match events API (goals, cards, substitutions)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

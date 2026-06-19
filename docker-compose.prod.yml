@@ -1,0 +1,18 @@
+services:
+  open-fifa-api:
+    image: ghcr.io/nradar/open-fifa-api:latest
+    container_name: open-fifa-api
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      - PORT=8090
+      - FIFA_API_BASE=https://api.fifa.com/api/v3
+      - WC_COMPETITION_ID=17
+      - WC_SEASON_ID=285023
+      - WC_STAGE_ID=289273
+      - POLL_LIVE_MS=15000
+      - POLL_IDLE_MS=300000
+      - SNAPSHOT_PATH=/data/snapshot.json
+    volumes:
+      - ./data:/data
