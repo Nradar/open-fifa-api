@@ -11,7 +11,7 @@
   <Project>https://github.com/nradar/open-fifa-api</Project>
   <Overview>Free real-time FIFA World Cup 2026 match events API (goals, cards, substitutions). Polls FIFA internal JSON API and exposes REST + SSE.</Overview>
   <Category>Tools:Utilities</Category>
-  <WebUI>http://[IP]:[PORT:8090]/health</WebUI>
+  <WebUI>http://[IP]:[PORT:28736]/health</WebUI>
   <TemplateURL/>
   <Icon>https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/soccer-icon.png</Icon>
   <ExtraParams/>
@@ -21,9 +21,9 @@
   <DonateText/>
   <DonateLink/>
   <Requires>Replace nradar with your GitHub username. Push code to GitHub to build the image automatically. GHCR package must be public (or configure registry auth on Unraid).</Requires>
-  <Config Name="API Port" Target="8090" Default="8090" Mode="tcp" Description="HTTP API port" Type="Port" Display="always" Required="true" Mask="false">8090</Config>
+  <Config Name="API Port" Target="28736" Default="28736" Mode="tcp" Description="HTTP API port" Type="Port" Display="always" Required="true" Mask="false">28736</Config>
   <Config Name="Data Directory" Target="/data" Default="/mnt/user/appdata/open-fifa-api" Mode="rw" Description="Snapshot cache (schedule + events survive restarts)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/open-fifa-api</Config>
-  <Config Name="PORT" Target="PORT" Default="8090" Mode="{3}" Description="Internal HTTP port" Type="Variable" Display="advanced" Required="true" Mask="false">8090</Config>
+  <Config Name="PORT" Target="PORT" Default="28736" Mode="{3}" Description="Internal HTTP port" Type="Variable" Display="advanced" Required="true" Mask="false">28736</Config>
   <Config Name="SNAPSHOT_PATH" Target="SNAPSHOT_PATH" Default="/data/snapshot.json" Mode="{3}" Description="Snapshot JSON path inside container" Type="Variable" Display="advanced" Required="false" Mask="false">/data/snapshot.json</Config>
   <Config Name="POLL_LIVE_MS" Target="POLL_LIVE_MS" Default="15000" Mode="{3}" Description="Poll interval during live matches (ms)" Type="Variable" Display="advanced" Required="false" Mask="false">15000</Config>
   <Config Name="POLL_IDLE_MS" Target="POLL_IDLE_MS" Default="300000" Mode="{3}" Description="Poll interval when idle (ms)" Type="Variable" Display="advanced" Required="false" Mask="false">300000</Config>

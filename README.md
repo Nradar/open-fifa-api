@@ -16,7 +16,7 @@ Or with Docker:
 docker compose up --build
 ```
 
-Service runs at `http://localhost:8090`.
+Service runs at `http://localhost:28736`.
 
 ## Endpoints
 
@@ -33,10 +33,10 @@ Service runs at `http://localhost:8090`.
 ## Example
 
 ```bash
-curl http://localhost:8090/health
-curl http://localhost:8090/api/live
-curl http://localhost:8090/api/matches/400021443/events
-curl -N http://localhost:8090/api/stream
+curl http://localhost:28736/health
+curl http://localhost:28736/api/live
+curl http://localhost:28736/api/matches/400021443/events
+curl -N http://localhost:28736/api/stream
 ```
 
 ## Configuration

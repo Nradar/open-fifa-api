@@ -4,7 +4,7 @@ const { createStore } = require('./store');
 const { createPoller } = require('./poller');
 const { createRoutes } = require('./routes');
 
-const port = Number(process.env.PORT || 8090);
+const port = Number(process.env.PORT || 28736);
 
 const store = createStore({
   snapshotPath: process.env.SNAPSHOT_PATH || './data/snapshot.json',
