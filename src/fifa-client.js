@@ -81,6 +81,25 @@ function createFifaClient(options = {}) {
     return request(path);
   }
 
+  async function fetchLiveMatchDetail(matchId) {
+    const path = `/live/football/${competitionId}/${seasonId}/${stageId}/${matchId}`;
+    return request(path);
+  }
+
+  async function fetchAllSquads() {
+    const squads = [];
+    let token = null;
+
+    do {
+      const query = token ? { continuationtoken: token } : {};
+      const data = await request(`/teams/squads/all/${competitionId}/${seasonId}`, query);
+      squads.push(...(data.Results || []));
+      token = data.ContinuationToken || null;
+    } while (token);
+
+    return squads;
+  }
+
   return {
     competitionId,
     seasonId,
@@ -88,6 +107,8 @@ function createFifaClient(options = {}) {
     fetchAllCalendarMatches,
     fetchLiveMatches,
     fetchMatchTimeline,
+    fetchLiveMatchDetail,
+    fetchAllSquads,
   };
 }
 

@@ -3,6 +3,7 @@ const { createFifaClient } = require('./fifa-client');
 const { createStore } = require('./store');
 const { createPoller } = require('./poller');
 const { createRoutes } = require('./routes');
+const { createPlayerLookup } = require('./player-lookup');
 
 const port = Number(process.env.PORT || 28736);
 
@@ -11,7 +12,8 @@ const store = createStore({
 });
 
 const fifaClient = createFifaClient();
-const poller = createPoller({ fifaClient, store });
+const playerLookup = createPlayerLookup(fifaClient);
+const poller = createPoller({ fifaClient, store, playerLookup });
 
 const inflightTimelines = new Map();
 async function ensureTimeline(matchId, { force = false } = {}) {

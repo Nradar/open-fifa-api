@@ -59,19 +59,73 @@ function createStore(options = {}) {
     return events.filter((e) => e.type !== 'other');
   }
 
+  function eventRichness(event) {
+    let score = 0;
+    if (event.player?.name) score += 20;
+    else if (event.player?.id) score += 8;
+    const desc = String(event.description || '');
+    if (desc && !/^[^()]+\s+score!$/i.test(desc.trim())) score += 5;
+    if (desc.includes('(')) score += 3;
+    if (desc.length > 16) score += 1;
+    return score;
+  }
+
+  function mergeEvent(existing, incoming) {
+    const merged = {
+      ...existing,
+      ...incoming,
+      team: incoming.team?.name ? incoming.team : existing.team,
+      score:
+        incoming.score?.home != null || incoming.score?.away != null
+          ? incoming.score
+          : existing.score,
+    };
+
+    if (incoming.player?.name) {
+      merged.player = incoming.player;
+    } else if (existing.player?.name) {
+      merged.player = existing.player;
+    } else if (incoming.player?.id || existing.player?.id) {
+      merged.player = {
+        id: incoming.player?.id || existing.player?.id || null,
+        name: incoming.player?.name || existing.player?.name || null,
+      };
+    } else {
+      merged.player = incoming.player || existing.player || null;
+    }
+
+    if (eventRichness(merged) > eventRichness(existing)) {
+      return merged;
+    }
+    return existing;
+  }
+
   function addEvents(matchId, events) {
     const id = String(matchId);
     if (!state.eventsByMatch.has(id)) {
       state.eventsByMatch.set(id, []);
     }
     const list = state.eventsByMatch.get(id);
-    const added = [];
+    const changed = [];
 
     for (const event of events) {
-      if (state.eventIds.has(event.id)) continue;
+      const idx = list.findIndex((item) => item.id === event.id);
+      if (idx >= 0) {
+        const merged = mergeEvent(list[idx], event);
+        if (merged !== list[idx]) {
+          list[idx] = merged;
+          changed.push(merged);
+          const recentIdx = state.recentEvents.findIndex((item) => item.id === event.id);
+          if (recentIdx >= 0) {
+            state.recentEvents[recentIdx] = merged;
+          }
+        }
+        continue;
+      }
+
       state.eventIds.add(event.id);
       list.push(event);
-      added.push(event);
+      changed.push(event);
       state.recentEvents.unshift(event);
     }
 
@@ -79,11 +133,11 @@ function createStore(options = {}) {
       state.recentEvents.length = 500;
     }
 
-    for (const event of added) {
+    for (const event of changed) {
       broadcastSse(event);
     }
 
-    return added;
+    return changed;
   }
 
   function getRecentEvents(limit = 50) {

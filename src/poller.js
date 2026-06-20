@@ -9,7 +9,7 @@ const FINISH_GRACE_POLLS = 2;
 const WINDOW_BEFORE_MS = 30 * 60 * 1000;
 const WINDOW_AFTER_MS = 15 * 60 * 1000;
 
-function createPoller({ fifaClient, store, options = {} }) {
+function createPoller({ fifaClient, store, playerLookup, options = {} }) {
   const pollLiveMs = Number(options.pollLiveMs || process.env.POLL_LIVE_MS || 15000);
   const pollIdleMs = Number(options.pollIdleMs || process.env.POLL_IDLE_MS || 300000);
   const snapshotEvery = Number(options.snapshotEvery || 10);
@@ -43,9 +43,20 @@ function createPoller({ fifaClient, store, options = {} }) {
     const match = store.getMatch(matchId);
     if (!match) return [];
 
+    let lineupGoals = [];
+    if (playerLookup && (match.status === 'live' || store.getLiveMatches().some((m) => m.id === match.id))) {
+      try {
+        const detail = await fifaClient.fetchLiveMatchDetail(matchId);
+        lineupGoals = playerLookup.ingestLineup(detail).goals;
+      } catch (err) {
+        console.warn(`Lineup fetch failed for ${matchId}: ${err.message}`);
+      }
+    }
+
     const timeline = await fifaClient.fetchMatchTimeline(matchId);
     const rawEvents = timeline.Event || [];
-    const normalized = rawEvents.map((e) => normalizeTimelineEvent(e, match));
+    const ctx = { playerLookup, lineupGoals };
+    const normalized = rawEvents.map((e) => normalizeTimelineEvent(e, match, ctx));
     const publicEvents = filterPublicEvents(normalized);
     const added = store.addEvents(matchId, publicEvents);
 
@@ -119,6 +130,13 @@ function createPoller({ fifaClient, store, options = {} }) {
 
   async function start() {
     store.loadSnapshot();
+    if (playerLookup) {
+      try {
+        await playerLookup.loadSquads();
+      } catch (err) {
+        console.warn(`Squad preload failed: ${err.message}`);
+      }
+    }
     try {
       await syncSchedule();
     } catch (err) {

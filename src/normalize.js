@@ -157,7 +157,7 @@ function inferMatchStatus(raw) {
   return 'scheduled';
 }
 
-function normalizeTimelineEvent(raw, match) {
+function normalizeTimelineEvent(raw, match, ctx = {}) {
   const type = mapFifaEventType(raw.Type);
   const teamId = raw.IdTeam || null;
   const team =
@@ -169,6 +169,8 @@ function normalizeTimelineEvent(raw, match) {
           : { id: teamId, name: null, code: null }
       : null;
 
+  const description = localeText(raw.EventDescription, localeText(raw.TypeLocalized, ''));
+
   const event = {
     id: String(raw.EventId),
     matchId: match?.id || String(raw.IdMatch || ''),
@@ -178,16 +180,14 @@ function normalizeTimelineEvent(raw, match) {
     type,
     rawType: raw.Type,
     team,
-    player: raw.IdPlayer
-      ? { id: String(raw.IdPlayer), name: extractPlayerName(raw) }
-      : null,
-    playerIn: raw.IdPlayer ? { id: String(raw.IdPlayer), name: null } : null,
+    player: resolvePlayer(raw, ctx),
+    playerIn: null,
     playerOut: raw.IdSubPlayer ? { id: String(raw.IdSubPlayer), name: null } : null,
     score: {
       home: raw.HomeGoals ?? null,
       away: raw.AwayGoals ?? null,
     },
-    description: localeText(raw.EventDescription, localeText(raw.TypeLocalized, '')),
+    description,
     timestamp: raw.Timestamp || null,
   };
 
@@ -202,7 +202,7 @@ function normalizeTimelineEvent(raw, match) {
     event.player = null;
   }
 
-  return event;
+  return enrichGoalPlayer(event, ctx);
 }
 
 function extractPlayerName(raw) {
@@ -213,7 +213,53 @@ function extractPlayerName(raw) {
   if (booked) return booked[1].trim();
   const ownGoal = desc.match(/^(.+?)\s*\([^)]+\)\s+scores an own goal/i);
   if (ownGoal) return ownGoal[1].trim();
+  const scores = desc.match(/^(.+?)\s*\([^)]+\)\s+scores?!+/i);
+  if (scores) return scores[1].trim();
   return null;
+}
+
+function resolvePlayer(raw, ctx = {}) {
+  const lookup = ctx.playerLookup;
+  let name = extractPlayerName(raw);
+  const id = raw.IdPlayer ? String(raw.IdPlayer) : null;
+
+  if (id && !name && lookup) {
+    name = lookup.getName(id);
+  }
+
+  if (id) {
+    return { id, name: name || null };
+  }
+  return null;
+}
+
+function enrichGoalPlayer(event, ctx = {}) {
+  if (!['goal', 'penalty_goal', 'own_goal'].includes(event.type)) return event;
+  if (event.player?.name) return event;
+
+  const lookup = ctx.playerLookup;
+  if (!lookup) return event;
+
+  let id = event.player?.id || null;
+  let name = event.player?.name || null;
+
+  if (!id) {
+    id = lookup.findGoalScorer(event, ctx.lineupGoals || []);
+  }
+
+  if (id && !name) {
+    name = lookup.getName(id);
+  }
+
+  if (!id && !name) return event;
+
+  return {
+    ...event,
+    player: {
+      id: id || event.player?.id || null,
+      name: name || event.player?.name || null,
+    },
+  };
 }
 
 function extractSubstitutionNames(raw) {
@@ -243,5 +289,6 @@ module.exports = {
   normalizeTimelineEvent,
   filterPublicEvents,
   isPublicEvent,
+  enrichGoalPlayer,
   PERIOD_MAP,
 };
