@@ -1,4 +1,5 @@
 const express = require('express');
+const { reconcileGoalEvents } = require('./normalize');
 
 function createRoutes(store, { ensureTimeline } = {}) {
   const router = express.Router();
@@ -11,7 +12,8 @@ function createRoutes(store, { ensureTimeline } = {}) {
         store.saveSnapshot();
       }
     }
-    return store.getMatchEvents(match.id);
+    const events = store.getMatchEvents(match.id);
+    return reconcileGoalEvents(events, match);
   }
 
   router.get('/health', (_req, res) => {
@@ -124,7 +126,16 @@ function summarizeEvents(events) {
     }
     if (!event.team?.name) continue;
     if (!byTeam[event.team.name]) {
-      byTeam[event.team.name] = { yellow_card: 0, red_card: 0, second_yellow: 0, goal: 0 };
+      byTeam[event.team.name] = {
+        goal: 0,
+        penalty_goal: 0,
+        own_goal: 0,
+        yellow_card: 0,
+        red_card: 0,
+        second_yellow: 0,
+        substitution: 0,
+        var: 0,
+      };
     }
     const bucket = byTeam[event.team.name];
     if (bucket[event.type] !== undefined) {

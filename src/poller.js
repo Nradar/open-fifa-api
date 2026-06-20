@@ -3,6 +3,7 @@ const {
   normalizeLiveMatch,
   normalizeTimelineEvent,
   filterPublicEvents,
+  reconcileGoalEvents,
 } = require('./normalize');
 
 const FINISH_GRACE_POLLS = 2;
@@ -58,7 +59,8 @@ function createPoller({ fifaClient, store, playerLookup, options = {} }) {
     const ctx = { playerLookup, lineupGoals };
     const normalized = rawEvents.map((e) => normalizeTimelineEvent(e, match, ctx));
     const publicEvents = filterPublicEvents(normalized);
-    const added = store.addEvents(matchId, publicEvents);
+    const reconciled = reconcileGoalEvents(publicEvents, match);
+    store.setMatchEvents(matchId, reconciled);
 
     const last = normalized[normalized.length - 1];
     if (last?.type === 'period' && last.description?.toLowerCase().includes('final whistle')) {
@@ -68,7 +70,7 @@ function createPoller({ fifaClient, store, playerLookup, options = {} }) {
       });
     }
 
-    return added;
+    return reconciled;
   }
 
   async function pollLiveNow() {

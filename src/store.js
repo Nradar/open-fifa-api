@@ -140,6 +140,42 @@ function createStore(options = {}) {
     return changed;
   }
 
+  function setMatchEvents(matchId, events) {
+    const id = String(matchId);
+    const prev = getMatchEvents(id);
+    const next = [...(events || [])];
+    state.eventsByMatch.set(id, next);
+
+    for (const event of next) {
+      state.eventIds.add(event.id);
+    }
+
+    const changed = [];
+    const prevById = new Map(prev.map((event) => [event.id, event]));
+    const nextIds = new Set(next.map((event) => event.id));
+
+    for (const event of next) {
+      const old = prevById.get(event.id);
+      if (!old || JSON.stringify(old) !== JSON.stringify(event)) {
+        changed.push(event);
+      }
+    }
+
+    for (const event of prev) {
+      if (!nextIds.has(event.id)) {
+        changed.push({ ...event, removed: true });
+      }
+    }
+
+    for (const event of changed) {
+      if (!event.removed) {
+        broadcastSse(event);
+      }
+    }
+
+    return changed.filter((event) => !event.removed);
+  }
+
   function getRecentEvents(limit = 50) {
     return state.recentEvents.slice(0, Math.max(1, Math.min(limit, 200)));
   }
@@ -220,6 +256,7 @@ function createStore(options = {}) {
     setMatchStatus,
     getMatchEvents,
     addEvents,
+    setMatchEvents,
     getRecentEvents,
     setMeta,
     getMeta,

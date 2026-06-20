@@ -283,6 +283,74 @@ function filterPublicEvents(events) {
   return events.filter((e) => isPublicEvent(e.type));
 }
 
+const GOAL_EVENT_TYPES = new Set(['goal', 'penalty_goal', 'own_goal']);
+
+function parseMinuteSortKey(minute) {
+  if (!minute) return 0;
+  const match = String(minute).replace(/\+/g, '.').match(/(\d+(?:\.\d+)?)/);
+  return match ? parseFloat(match[1]) : 0;
+}
+
+function eventSortKey(event) {
+  const ts = event?.timestamp ? Date.parse(event.timestamp) : NaN;
+  if (Number.isFinite(ts)) return ts;
+  return parseMinuteSortKey(event?.minute);
+}
+
+function goalCredits(goal, match) {
+  const teamId = goal.team?.id != null ? String(goal.team.id) : '';
+  const homeId = match?.home?.id != null ? String(match.home.id) : '';
+  const awayId = match?.away?.id != null ? String(match.away.id) : '';
+  if (!teamId || (!homeId && !awayId)) return null;
+
+  if (goal.type === 'own_goal') {
+    if (teamId === homeId) return { home: 0, away: 1 };
+    if (teamId === awayId) return { home: 1, away: 0 };
+    return null;
+  }
+
+  if (teamId === homeId) return { home: 1, away: 0 };
+  if (teamId === awayId) return { home: 0, away: 1 };
+  return null;
+}
+
+function reconcileGoalEvents(events, match) {
+  const list = events || [];
+  const homeTarget = match?.score?.home;
+  const awayTarget = match?.score?.away;
+  if (homeTarget == null || awayTarget == null) return list;
+
+  const goals = list
+    .filter((event) => GOAL_EVENT_TYPES.has(event.type))
+    .slice()
+    .sort((a, b) => eventSortKey(a) - eventSortKey(b));
+
+  if (!goals.length) return list;
+
+  let homeCount = 0;
+  let awayCount = 0;
+  const keepGoalIds = new Set();
+
+  for (const goal of goals) {
+    const credit = goalCredits(goal, match);
+    if (!credit) continue;
+
+    const nextHome = homeCount + credit.home;
+    const nextAway = awayCount + credit.away;
+    if (nextHome > homeTarget || nextAway > awayTarget) continue;
+
+    homeCount = nextHome;
+    awayCount = nextAway;
+    keepGoalIds.add(goal.id);
+  }
+
+  if (homeCount !== homeTarget || awayCount !== awayTarget) {
+    return list;
+  }
+
+  return list.filter((event) => !GOAL_EVENT_TYPES.has(event.type) || keepGoalIds.has(event.id));
+}
+
 module.exports = {
   normalizeCalendarMatch,
   normalizeLiveMatch,
@@ -290,5 +358,6 @@ module.exports = {
   filterPublicEvents,
   isPublicEvent,
   enrichGoalPlayer,
+  reconcileGoalEvents,
   PERIOD_MAP,
 };
