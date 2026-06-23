@@ -7,6 +7,7 @@ function createStore(options = {}) {
   const state = {
     matches: new Map(),
     eventsByMatch: new Map(),
+    lineupsByMatch: new Map(),
     eventIds: new Set(),
     recentEvents: [],
     meta: {
@@ -180,6 +181,17 @@ function createStore(options = {}) {
     return state.recentEvents.slice(0, Math.max(1, Math.min(limit, 200)));
   }
 
+  function getMatchLineup(matchId) {
+    return state.lineupsByMatch.get(String(matchId)) || null;
+  }
+
+  function setMatchLineup(matchId, lineup) {
+    if (!lineup) return null;
+    const id = String(matchId);
+    state.lineupsByMatch.set(id, lineup);
+    return lineup;
+  }
+
   function setMeta(partial) {
     Object.assign(state.meta, partial);
   }
@@ -215,6 +227,9 @@ function createStore(options = {}) {
         eventsByMatch: Object.fromEntries(
           [...state.eventsByMatch.entries()].map(([k, v]) => [k, v])
         ),
+        lineupsByMatch: Object.fromEntries(
+          [...state.lineupsByMatch.entries()].map(([k, v]) => [k, v])
+        ),
         eventIds: [...state.eventIds],
         recentEvents: state.recentEvents.slice(0, 100),
         meta: state.meta,
@@ -234,6 +249,9 @@ function createStore(options = {}) {
       }
       for (const [matchId, events] of Object.entries(data.eventsByMatch || {})) {
         state.eventsByMatch.set(String(matchId), events);
+      }
+      for (const [matchId, lineup] of Object.entries(data.lineupsByMatch || {})) {
+        state.lineupsByMatch.set(String(matchId), lineup);
       }
       for (const id of data.eventIds || []) {
         state.eventIds.add(String(id));
@@ -258,6 +276,8 @@ function createStore(options = {}) {
     addEvents,
     setMatchEvents,
     getRecentEvents,
+    getMatchLineup,
+    setMatchLineup,
     setMeta,
     getMeta,
     addSseClient,

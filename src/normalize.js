@@ -351,6 +351,67 @@ function reconcileGoalEvents(events, match) {
   return list.filter((event) => !GOAL_EVENT_TYPES.has(event.type) || keepGoalIds.has(event.id));
 }
 
+const POSITION_LABELS = {
+  0: 'GK',
+  1: 'DEF',
+  2: 'MID',
+  3: 'FWD',
+};
+
+function normalizeLineupPlayer(raw) {
+  const statusCode = raw?.Status;
+  let status = 'unknown';
+  if (statusCode === 1) status = 'starter';
+  else if (statusCode === 2) status = 'bench';
+
+  return {
+    id: raw?.IdPlayer ? String(raw.IdPlayer) : null,
+    name: localeText(raw?.PlayerName, localeText(raw?.ShortName, '')).trim() || null,
+    shirtNumber: raw?.ShirtNumber ?? null,
+    position: POSITION_LABELS[raw?.Position] || null,
+    positionCode: raw?.Position ?? null,
+    captain: Boolean(raw?.Captain),
+    status,
+  };
+}
+
+function sortLineupPlayers(players) {
+  return [...(players || [])].sort((a, b) => {
+    const na = a.shirtNumber == null ? 999 : Number(a.shirtNumber);
+    const nb = b.shirtNumber == null ? 999 : Number(b.shirtNumber);
+    return na - nb || String(a.name || '').localeCompare(String(b.name || ''));
+  });
+}
+
+function normalizeLineupSide(teamSide, matchSide) {
+  const players = (teamSide?.Players || []).map(normalizeLineupPlayer).filter((p) => p.name || p.id);
+  const starters = sortLineupPlayers(players.filter((p) => p.status === 'starter'));
+  const bench = sortLineupPlayers(players.filter((p) => p.status === 'bench'));
+
+  return {
+    teamId: teamSide?.IdTeam || matchSide?.id || null,
+    name: matchSide?.name || null,
+    code: matchSide?.code || null,
+    formation: teamSide?.Tactics || null,
+    starters,
+    bench,
+  };
+}
+
+function normalizeMatchLineup(detail, match) {
+  if (!detail) return null;
+  const home = normalizeLineupSide(detail.HomeTeam, match?.home);
+  const away = normalizeLineupSide(detail.AwayTeam, match?.away);
+  if (!home.starters.length && !away.starters.length) return null;
+
+  return {
+    matchId: String(detail.IdMatch || match?.id || ''),
+    updatedAt: new Date().toISOString(),
+    home,
+    away,
+  };
+}
+
 module.exports = {
   normalizeCalendarMatch,
   normalizeLiveMatch,
@@ -359,5 +420,7 @@ module.exports = {
   isPublicEvent,
   enrichGoalPlayer,
   reconcileGoalEvents,
+  normalizeMatchLineup,
   PERIOD_MAP,
+  POSITION_LABELS,
 };

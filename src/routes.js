@@ -1,7 +1,7 @@
 const express = require('express');
-const { reconcileGoalEvents } = require('./normalize');
+const { reconcileGoalEvents, normalizeMatchLineup } = require('./normalize');
 
-function createRoutes(store, { ensureTimeline } = {}) {
+function createRoutes(store, { ensureTimeline, fifaClient } = {}) {
   const router = express.Router();
 
   async function loadMatchEvents(match, req) {
@@ -80,6 +80,37 @@ function createRoutes(store, { ensureTimeline } = {}) {
     } catch (err) {
       res.status(502).json({ error: err.message });
     }
+  });
+
+  router.get('/api/matches/:matchId/lineup', async (req, res) => {
+    const match = store.getMatch(req.params.matchId);
+    if (!match) {
+      res.status(404).json({ error: 'Match not found' });
+      return;
+    }
+
+    const force = req.query.refresh === '1' || req.query.refresh === 'true';
+    let lineup = force ? null : store.getMatchLineup(match.id);
+
+    if (!lineup && fifaClient) {
+      try {
+        const detail = await fifaClient.fetchLiveMatchDetail(match.id);
+        lineup = normalizeMatchLineup(detail, match);
+        if (lineup) store.setMatchLineup(match.id, lineup);
+      } catch (err) {
+        if (!lineup) {
+          res.status(502).json({ error: err.message });
+          return;
+        }
+      }
+    }
+
+    if (!lineup) {
+      res.status(404).json({ error: 'Lineup not available yet' });
+      return;
+    }
+
+    res.json(lineup);
   });
 
   router.get('/api/events/recent', (req, res) => {

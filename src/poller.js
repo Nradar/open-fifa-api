@@ -4,6 +4,7 @@ const {
   normalizeTimelineEvent,
   filterPublicEvents,
   reconcileGoalEvents,
+  normalizeMatchLineup,
 } = require('./normalize');
 
 const FINISH_GRACE_POLLS = 2;
@@ -40,15 +41,42 @@ function createPoller({ fifaClient, store, playerLookup, options = {} }) {
     console.log(`Schedule synced: ${raw.length} matches`);
   }
 
+  async function ingestLineup(matchId) {
+    const match = store.getMatch(matchId);
+    if (!match) return null;
+
+    try {
+      const detail = await fifaClient.fetchLiveMatchDetail(matchId);
+      const lineup = normalizeMatchLineup(detail, match);
+      if (lineup) store.setMatchLineup(matchId, lineup);
+      if (playerLookup) {
+        playerLookup.ingestLineup(detail);
+      }
+      return lineup;
+    } catch (err) {
+      console.warn(`Lineup fetch failed for ${matchId}: ${err.message}`);
+      return store.getMatchLineup(matchId);
+    }
+  }
+
   async function ingestTimeline(matchId) {
     const match = store.getMatch(matchId);
     if (!match) return [];
 
     let lineupGoals = [];
-    if (playerLookup && (match.status === 'live' || store.getLiveMatches().some((m) => m.id === match.id))) {
+    const shouldFetchDetail =
+      match.status === 'live' ||
+      store.getLiveMatches().some((m) => m.id === match.id) ||
+      isInMatchWindow(match);
+
+    if (shouldFetchDetail) {
       try {
         const detail = await fifaClient.fetchLiveMatchDetail(matchId);
-        lineupGoals = playerLookup.ingestLineup(detail).goals;
+        const lineup = normalizeMatchLineup(detail, match);
+        if (lineup) store.setMatchLineup(matchId, lineup);
+        if (playerLookup) {
+          lineupGoals = playerLookup.ingestLineup(detail).goals;
+        }
       } catch (err) {
         console.warn(`Lineup fetch failed for ${matchId}: ${err.message}`);
       }
@@ -95,6 +123,13 @@ function createPoller({ fifaClient, store, playerLookup, options = {} }) {
           finishPolls.delete(match.id);
         }
       }
+    }
+
+    for (const match of store.getAllMatches()) {
+      if (match.status === 'finished' || liveIds.has(match.id)) continue;
+      if (!isInMatchWindow(match)) continue;
+      if (store.getMatchLineup(match.id)?.home?.starters?.length) continue;
+      await ingestLineup(match.id);
     }
 
     store.setMeta({ liveCount: store.getLiveMatches().length });
@@ -154,7 +189,7 @@ function createPoller({ fifaClient, store, playerLookup, options = {} }) {
     timer = null;
   }
 
-  return { start, stop, syncSchedule, pollTick, ingestTimeline };
+  return { start, stop, syncSchedule, pollTick, ingestTimeline, ingestLineup };
 }
 
 module.exports = { createPoller };
